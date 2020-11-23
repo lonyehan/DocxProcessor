@@ -1,8 +1,7 @@
-﻿using DocumentFormat.OpenXml.Packaging;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Text.RegularExpressions;
+using Xceed.Words.NET;
 
 namespace DocxProcessor
 {
@@ -29,30 +28,18 @@ namespace DocxProcessor
                     using (var stream = new MemoryStream())
                     {
                         stream.Write(byteArray, 0, byteArray.Length);
-                        using (var wordDoc = WordprocessingDocument.Open(stream, true))
+                        using (DocX document = DocX.Load(stream))
                         {
-
-                            string docText = null;
-
-                            using (StreamReader sr = new StreamReader(wordDoc.MainDocumentPart.GetStream()))
-                            {
-                                docText = sr.ReadToEnd();
-                            }
+                            
 
                             foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
                             {
                                 string SearchString = keyValuePair.Key;
-                                string ReplaceString = keyValuePair.Value.Replace("\r\n", "<w:br/>").Replace("\n", "<w:br/>");
-                                Regex regexText = new Regex(SearchString);
-                                docText = regexText.Replace(docText, ReplaceString);
-                            }
+                                string ReplaceString = keyValuePair.Value;
+                                document.ReplaceText(SearchString, ReplaceString);
+                            }                            
 
-                            using (StreamWriter sw = new StreamWriter(wordDoc.MainDocumentPart.GetStream(FileMode.Create)))
-                            {
-                                sw.Write(docText);
-                            }
-
-                            wordDoc.MainDocumentPart.Document.Save(); // won't update the original file 
+                            document.Save();
                         }
 
                         // Save the file with the new name
@@ -125,12 +112,12 @@ namespace DocxProcessor
 
                 foreach (PropertyInfo info in infos)
                 {
-                    ReplaceItems.Add( "#" + info.Name + "#", info.GetValue(ReplaceModel, null).ToString());
+                    ReplaceItems.Add("#" + info.Name + "#", info.GetValue(ReplaceModel, null).ToString());
                 }
 
                 return Replace(TemplateFilePath, ReplaceItems);
             }
-            catch(InvalidDataException e)
+            catch (InvalidDataException e)
             {
                 throw e;
             }
