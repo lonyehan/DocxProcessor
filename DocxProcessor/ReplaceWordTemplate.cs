@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using Xceed.Words.NET;
 
 namespace DocxProcessor
 {
@@ -24,22 +25,53 @@ namespace DocxProcessor
             {
                 if (File.Exists(TemplateFilePath) == true)
                 {
-                    byte[] byteArray = File.ReadAllBytes(TemplateFilePath);
+                    byte[] byteArray = File.ReadAllBytes(TemplateFilePath); // 讀檔案
+
                     using (var stream = new MemoryStream())
                     {
-                        stream.Write(byteArray, 0, byteArray.Length);
-                        using (DocX document = DocX.Load(stream))
-                        {
-                            
+                        stream.Write(byteArray, 0, byteArray.Length); 
 
+                        using (var wordDoc = WordprocessingDocument.Open(stream, true))
+                        {
+
+                            var document = wordDoc.MainDocumentPart.Document;                            
                             foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
                             {
+                                #region 字典取代部分
                                 string SearchString = keyValuePair.Key;
-                                string ReplaceString = keyValuePair.Value;
-                                document.ReplaceText(SearchString, ReplaceString);
-                            }                            
+                                string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n");
 
-                            document.Save();
+                                foreach (var text in document.Descendants<Text>()) // <<< Here
+                                {
+                                    if (text.Text.Contains(SearchString) && ReplaceString.Contains("\r\n"))
+                                    {
+                                        string[] ReplaceStringList = ReplaceString.Split("\r\n");
+                                        
+                                        text.Text = text.Text.Replace(SearchString, "");
+
+                                        for (int i = 0; i < ReplaceStringList.Length; i++)
+                                        {
+                                            string term = ReplaceStringList[i];
+                                            text.Parent.Append(new Text(term));
+                                            
+                                            // 最後一個字串無需換行
+                                            if( i == ReplaceStringList.Length - 1)
+                                            {
+                                                break;
+                                            }
+
+                                            text.Parent.Append(new DocumentFormat.OpenXml.Wordprocessing.Break());
+                                        }                                        
+                                    }
+                                    else if(text.Text.Contains(SearchString) && !ReplaceString.Contains("\r\n"))
+                                    {
+                                        text.Text = text.Text.Replace(SearchString, ReplaceString);
+                                    }
+                                }
+                                #endregion
+                            }
+
+                            wordDoc.MainDocumentPart.Document.Save(); // won't update the original file 
                         }
 
                         // Save the file with the new name
@@ -112,12 +144,12 @@ namespace DocxProcessor
 
                 foreach (PropertyInfo info in infos)
                 {
-                    ReplaceItems.Add("#" + info.Name + "#", info.GetValue(ReplaceModel, null).ToString());
+                    ReplaceItems.Add( "#" + info.Name + "#", info.GetValue(ReplaceModel, null).ToString());
                 }
 
                 return Replace(TemplateFilePath, ReplaceItems);
             }
-            catch (InvalidDataException e)
+            catch(InvalidDataException e)
             {
                 throw e;
             }
