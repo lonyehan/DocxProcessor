@@ -20,9 +20,7 @@ namespace DocxProcessor
         /// </param>                                 
         /// <returns>byte[]</returns>        
         public byte[] Replace(string TemplateFilePath, Dictionary<string, string> ReplaceItems)
-        {
-            try
-            {
+        {        
                 if (File.Exists(TemplateFilePath) == true)
                 {
                     byte[] byteArray = File.ReadAllBytes(TemplateFilePath); // 讀檔案
@@ -82,12 +80,7 @@ namespace DocxProcessor
                 else
                 {
                     throw new FileNotFoundException("Template File is not exist!");
-                }
-            }
-            catch (InvalidDataException e)
-            {
-                throw e;
-            }
+                }            
         }
         #endregion
 
@@ -104,9 +97,7 @@ namespace DocxProcessor
         /// </param>                                 
         /// <returns>byte[]</returns>        
         public bool Replace(string TemplateFilePath, string OutputFilePath, Dictionary<string, string> ReplaceItems)
-        {
-            try
-            {
+        {            
                 FileStream fs = new FileStream(OutputFilePath, FileMode.Create);
 
                 BinaryWriter bw = new BinaryWriter(fs);
@@ -116,12 +107,7 @@ namespace DocxProcessor
                 bw.Close();
                 fs.Close();
 
-                return true;
-            }
-            catch (InvalidDataException e)
-            {
-                throw e;
-            }
+                return true;                        
         }
         #endregion
 
@@ -135,9 +121,7 @@ namespace DocxProcessor
         /// </param>                                 
         /// <returns>byte[]</returns>        
         public byte[] Replace<T>(string TemplateFilePath, T ReplaceModel) where T : class
-        {
-            try
-            {
+        {            
                 PropertyInfo[] infos = ReplaceModel.GetType().GetProperties();
 
                 Dictionary<string, string> ReplaceItems = new Dictionary<string, string>();
@@ -147,12 +131,7 @@ namespace DocxProcessor
                     ReplaceItems.Add( "#" + info.Name + "#", info.GetValue(ReplaceModel, null).ToString());
                 }
 
-                return Replace(TemplateFilePath, ReplaceItems);
-            }
-            catch(InvalidDataException e)
-            {
-                throw e;
-            }
+                return Replace(TemplateFilePath, ReplaceItems);            
         }
         #endregion
     }
