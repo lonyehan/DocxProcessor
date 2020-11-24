@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30406.217
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocxProcessor", "DocxProcessor\DocxProcessor.csproj", "{21D4FAF8-35E3-4C73-B426-7793A9EEF27C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DocxProcessor", "DocxProcessor\DocxProcessor.csproj", "{21D4FAF8-35E3-4C73-B426-7793A9EEF27C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocxProcessorTests", "DocxProcessorTests\DocxProcessorTests.csproj", "{58C718D1-5F0C-48B5-BFBB-8C0D5860F91D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DocxProcessorTests", "DocxProcessorTests\DocxProcessorTests.csproj", "{58C718D1-5F0C-48B5-BFBB-8C0D5860F91D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

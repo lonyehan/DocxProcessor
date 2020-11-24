@@ -1,10 +1,16 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>.NET5</TargetFramework>
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="WordTemplate\**" />
+    <EmbeddedResource Remove="WordTemplate\**" />
+    <None Remove="WordTemplate\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="DocX" Version="1.7.1" />
