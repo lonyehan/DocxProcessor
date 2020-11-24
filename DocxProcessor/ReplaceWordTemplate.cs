@@ -128,7 +128,9 @@ namespace DocxProcessor
 
                 foreach (PropertyInfo info in infos)
                 {
-                    ReplaceItems.Add( "#" + info.Name + "#", info.GetValue(ReplaceModel, null).ToString());
+                    string Key = "#" + info.Name + "#";
+                    string Value = info.GetValue(ReplaceModel, null) == null ? "" : info.GetValue(ReplaceModel, null).ToString();
+                    ReplaceItems.Add(Key, Value);                
                 }
 
                 return Replace(TemplateFilePath, ReplaceItems);            
