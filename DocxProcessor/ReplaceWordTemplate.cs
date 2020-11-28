@@ -1,11 +1,19 @@
-﻿using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
+﻿using OpenXmlPowerTools;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using DocumentFormat.OpenXml.Packaging;
+using System.Xml.Linq;
+using System;
+using System.Text.RegularExpressions;
+using System.Text;
+using DocumentFormat.OpenXml.Wordprocessing;
+using System.Web;
 
 namespace DocxProcessor
 {
+
+
     public class ReplaceWordTemplate
     {
         #region Replace: WordTemplate Replace Function ([Core] Replace To Byte[] By Dictionary)
@@ -20,67 +28,49 @@ namespace DocxProcessor
         /// </param>                                 
         /// <returns>byte[]</returns>        
         public byte[] Replace(string TemplateFilePath, Dictionary<string, string> ReplaceItems)
-        {        
-                if (File.Exists(TemplateFilePath) == true)
+        {
+            if (File.Exists(TemplateFilePath) == true)
+            {
+                var stream = new MemoryStream();
+
+                #region 字典取代部分
+                WmlDocument doc = new WmlDocument(TemplateFilePath);
+                
+                foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
                 {
-                    byte[] byteArray = File.ReadAllBytes(TemplateFilePath); // 讀檔案
+                    
+                    string SearchString = keyValuePair.Key;
+                    string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題                    
 
-                    using (var stream = new MemoryStream())
-                    {
-                        stream.Write(byteArray, 0, byteArray.Length); 
-
-                        using (var wordDoc = WordprocessingDocument.Open(stream, true))
-                        {
-
-                            var document = wordDoc.MainDocumentPart.Document;                            
-                            foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
-                            {
-                                #region 字典取代部分
-                                string SearchString = keyValuePair.Key;
-                                string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n");
-
-                                foreach (var text in document.Descendants<Text>()) // <<< Here
-                                {
-                                    if (text.Text.Contains(SearchString) && ReplaceString.Contains("\r\n"))
-                                    {
-                                        string[] ReplaceStringList = ReplaceString.Split("\r\n");
-                                        
-                                        text.Text = text.Text.Replace(SearchString, "");
-
-                                        for (int i = 0; i < ReplaceStringList.Length; i++)
-                                        {
-                                            string term = ReplaceStringList[i];
-                                            text.Parent.Append(new Text(term));
-                                            
-                                            // 最後一個字串無需換行
-                                            if( i == ReplaceStringList.Length - 1)
-                                            {
-                                                break;
-                                            }
-
-                                            text.Parent.Append(new DocumentFormat.OpenXml.Wordprocessing.Break());
-                                        }                                        
-                                    }
-                                    else if(text.Text.Contains(SearchString) && !ReplaceString.Contains("\r\n"))
-                                    {
-                                        text.Text = text.Text.Replace(SearchString, ReplaceString);
-                                    }
-                                }
-                                #endregion
-                            }
-
-                            wordDoc.MainDocumentPart.Document.Save(); // won't update the original file 
-                        }
-
-                        // Save the file with the new name
-                        stream.Position = 0;
-                        return stream.ToArray();
-                    }
+                    doc = doc.SearchAndReplace(SearchString, ReplaceString, true);                                        
                 }
-                else
+                
+                stream.Write(doc.DocumentByteArray, 0, doc.DocumentByteArray.Length);
+                #endregion
+
+                #region 取代後字串格式整理
+                using (var wordDoc = WordprocessingDocument.Open(stream, true))
                 {
-                    throw new FileNotFoundException("Template File is not exist!");
-                }            
+                    string docText = wordDoc.MainDocumentPart.GetXDocument().ToString();
+                    
+                    docText = docText.Replace("\n", "").Replace("\r\n", ""); // 去除未替換的換行字串
+
+                    docText = docText.Replace("\t", "  "); // 將tab字串 換成真正的tab
+
+                    XDocument mainDocumentXDoc =  XDocument.Parse(HttpUtility.HtmlDecode(docText.Replace("\n", "").Replace("\r\n", "")));
+                    
+                    mainDocumentXDoc.Save(wordDoc.MainDocumentPart.GetStream(FileMode.Create));                    
+                }
+                #endregion
+
+                stream.Position = 0;
+
+                return stream.ToArray();
+            }
+            else
+            {
+                throw new FileNotFoundException("Template File is not exist!");
+            }
         }
         #endregion
 
@@ -97,17 +87,17 @@ namespace DocxProcessor
         /// </param>                                 
         /// <returns>byte[]</returns>        
         public bool Replace(string TemplateFilePath, string OutputFilePath, Dictionary<string, string> ReplaceItems)
-        {            
-                FileStream fs = new FileStream(OutputFilePath, FileMode.Create);
+        {
+            FileStream fs = new FileStream(OutputFilePath, FileMode.Create);
 
-                BinaryWriter bw = new BinaryWriter(fs);
+            BinaryWriter bw = new BinaryWriter(fs);
 
-                bw.Write(Replace(TemplateFilePath, ReplaceItems));
+            bw.Write(Replace(TemplateFilePath, ReplaceItems));
 
-                bw.Close();
-                fs.Close();
+            bw.Close();
+            fs.Close();
 
-                return true;                        
+            return true;
         }
         #endregion
 
@@ -121,20 +111,20 @@ namespace DocxProcessor
         /// </param>                                 
         /// <returns>byte[]</returns>        
         public byte[] Replace<T>(string TemplateFilePath, T ReplaceModel) where T : class
-        {            
-                PropertyInfo[] infos = ReplaceModel.GetType().GetProperties();
+        {
+            PropertyInfo[] infos = ReplaceModel.GetType().GetProperties();
 
-                Dictionary<string, string> ReplaceItems = new Dictionary<string, string>();
+            Dictionary<string, string> ReplaceItems = new Dictionary<string, string>();
 
-                foreach (PropertyInfo info in infos)
-                {
-                    string Key = "#" + info.Name + "#";
-                    string Value = info.GetValue(ReplaceModel, null) == null ? "" : info.GetValue(ReplaceModel, null).ToString();
-                    ReplaceItems.Add(Key, Value);                
-                }
+            foreach (PropertyInfo info in infos)
+            {
+                string Key = "#" + info.Name + "#";
+                string Value = info.GetValue(ReplaceModel, null) == null ? "" : info.GetValue(ReplaceModel, null).ToString();
+                ReplaceItems.Add(Key, Value);
+            }
 
-                return Replace(TemplateFilePath, ReplaceItems);            
+            return Replace(TemplateFilePath, ReplaceItems);
         }
-        #endregion
+        #endregion        
     }
 }
