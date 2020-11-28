@@ -21,10 +21,7 @@ namespace DocxProcessor.Tests
 4.	備有縝密的專車路線與4人一寢冷氣宿舍，優質環境歡迎蒞校參觀或來電詢問(037-868680分機204)。
 ";
 
-            keyValuePairs.Add("#1#", TestStr);
-            keyValuePairs.Add("#NO#", "測試");
-            keyValuePairs.Add("##Date##", "2020-0128");
-            keyValuePairs.Add("#手機#", "0905337291");
+            keyValuePairs.Add("#1#", TestStr);            
             var Replacer = new ReplaceWordTemplate();            
 
             FileStream fs = new FileStream(OutputFilePath2, FileMode.Create);
@@ -49,10 +46,8 @@ namespace DocxProcessor.Tests
 3.	課程以分組教學，並包含多種適性多元課程。擁有全新數位藝術與設計教室，設計與電繪課程、版畫課程、插畫創意風格課程與素描、水彩、水墨書畫等專業課程；設備、師資與課程規劃最健全，教學與輔導最用心!
 4.	備有縝密的專車路線與4人一寢冷氣宿舍，優質環境歡迎蒞校參觀或來電詢問(037-868680分機204)。
 ";
-
-            keyValuePairs.Add("#Name#", TestStr);
+            
             keyValuePairs.Add("#1#", TestStr);
-            keyValuePairs.Add("#NO#", "測試");
             var Replacer = new ReplaceWordTemplate();
             Replacer.Replace(TemplateFilePath, OutputFilePath, keyValuePairs);
         }
