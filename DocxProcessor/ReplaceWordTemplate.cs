@@ -40,7 +40,9 @@ namespace DocxProcessor
                 {
                     
                     string SearchString = keyValuePair.Key;
-                    string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題                    
+                    string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題     
+
+                    if (string.IsNullOrEmpty(ReplaceString)) ReplaceString = " ";
 
                     doc = doc.SearchAndReplace(SearchString, ReplaceString, true);                                        
                 }
