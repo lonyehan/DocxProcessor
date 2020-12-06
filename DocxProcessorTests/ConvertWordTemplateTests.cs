@@ -14,8 +14,8 @@ namespace DocxProcessor.Tests
         public void Case1()
         {
             //string InFilePath = GetTestDataFolder("WordTemplate\\test.docx");
-            string InFilePath = @"C:\\Users\\JasonJian\\Desktop\\sideProject\\WordProcessor\\DocxProcessorTests\\WordTemplate\\test.docx";
-            string OutFilePath = @"C:\\Users\\JasonJian\\Desktop\\sideProject\\WordProcessor\\DocxProcessorTests\\WordTemplate\\test.pdf";
+            string InFilePath = @"C:\\Users\\JasonJian\\Desktop\\sideProject\\WordProcessor\\DocxProcessorTests\\WordTemplate\\test2.docx";
+            string OutFilePath = @"C:\\Users\\JasonJian\\Desktop\\sideProject\\WordProcessor\\DocxProcessorTests\\WordTemplate\\test2.html";
 
             //convert Word to PDF
 
@@ -24,8 +24,8 @@ namespace DocxProcessor.Tests
 
             //Assert.IsTrue(Coverter.ConvertWordToPDF(InFilePath) == InFilePath);
             string tmp = Coverter.ConvertWordToHTML(InFilePath);
-            Coverter.ConvertHTMLToPDF(tmp, OutFilePath);
-            /*
+            //Coverter.ConvertHTMLToPDF(tmp, OutFilePath);
+            
             FileStream fs = new FileStream(OutFilePath, FileMode.Create);
 
             BinaryWriter bw = new BinaryWriter(fs);
@@ -36,7 +36,7 @@ namespace DocxProcessor.Tests
             bw.Close();
 
             fs.Close();
-            */
+            
 
         }
         public string GetTestDataFolder(string testDataFolder)

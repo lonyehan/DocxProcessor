@@ -6,12 +6,12 @@ using System.Reflection;
 using OpenXmlPowerTools;
 using System.Xml.Linq;
 using System.Text;
-using DinkToPdf;
+//using DinkToPdf;
 namespace DocxProcessor
 {
     public class ConvertWordTemplate
     {
-
+        /*
         public void ConvertWordToPDF(string InFilePath, string OutFilePath)
         {
             MemoryStream memoryStream = new MemoryStream();
@@ -30,7 +30,7 @@ namespace DocxProcessor
             }
 
         }
-
+        */
 
         public string ConvertWordToHTML(string InFilePath)
         {
@@ -49,6 +49,7 @@ namespace DocxProcessor
                 return htmlString;
             }
         }
+        /*
         public void ConvertHTMLToPDF(string pdfString, string OutFilePath)
         {
             var converter = new SynchronizedConverter(new PdfTools());
@@ -71,5 +72,6 @@ namespace DocxProcessor
             };
             byte[] pdf = converter.Convert(doc);
         }
+        */
     }
 }
