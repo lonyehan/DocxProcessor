@@ -2,12 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <Authors>LonYeHan</Authors>
     <Company>wkeDocxProcessor</Company>
     <Description>處理Word的函式庫
-* Replace string in docx</Description>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+* Replace string in docx
+* Replace string with image at TableCell</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>

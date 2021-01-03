@@ -50,6 +50,46 @@ namespace DocxProcessor
             return doc.SearchAndReplace(SearchString, ReplaceString, true);
         }
         #endregion        
+        public byte[] ReplaceTableCellByImage(byte[] Source, Dictionary<string, ImageData> ReplaceItems) {
+            MemoryStream originFile = new MemoryStream(Source, true);
+            MemoryStream destination = new MemoryStream();
+
+            originFile.CopyTo(destination);
+            originFile.Close();
+            using (var document = WordprocessingDocument.Open(destination, isEditable: true))
+            {
+                var mainPart = document.MainDocumentPart;
+                foreach (var table in mainPart.Document.Body.Descendants<Table>())
+                {
+                    foreach (var keyValuePair in ReplaceItems)
+                    {
+
+                        string SearchString = keyValuePair.Key;
+
+                        foreach (var pictureCell in table.Descendants<TableCell>())
+                        {
+                            if (pictureCell.InnerText.Contains(SearchString))
+                            {
+                                ImageData ReplacedImage = keyValuePair.Value;
+
+                                ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
+
+                                using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
+                                {
+                                    imagePart.FeedData(stream);
+                                }
+                                pictureCell.RemoveAllChildren<Paragraph>();
+                                AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
+                            }
+                        }
+                    }
+                }
+            }
+
+            destination.Position = 0;
+
+            return destination.ToArray();
+        }
         public byte[] ReplaceTableCellByImage(string TemplateFilePath, Dictionary<string, ImageData> ReplaceItems)
         {
 
@@ -62,29 +102,32 @@ namespace DocxProcessor
             using (var document = WordprocessingDocument.Open(destination, isEditable: true))
             {
                 var mainPart = document.MainDocumentPart;
-                var table = mainPart.Document.Body.Descendants<Table>().First();
-                foreach (var keyValuePair in ReplaceItems)
+
+                foreach (var table in mainPart.Document.Body.Descendants<Table>())
                 {
+                    foreach (var keyValuePair in ReplaceItems)
+                    {
 
-                    string SearchString = keyValuePair.Key;                    
+                        string SearchString = keyValuePair.Key;
 
-                    foreach (var pictureCell in table.Descendants<TableCell>())
-                    {   
-                        if(pictureCell.InnerText.Contains(SearchString))
+                        foreach (var pictureCell in table.Descendants<TableCell>())
                         {
-                            ImageData ReplacedImage = keyValuePair.Value;
-
-                            ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
-
-                            using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
+                            if (pictureCell.InnerText.Contains(SearchString))
                             {
-                                imagePart.FeedData(stream);
-                            }                            
-                            pictureCell.RemoveAllChildren<Paragraph>();
-                            AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
-                        }                        
-                    }                    
-                }                 
+                                ImageData ReplacedImage = keyValuePair.Value;
+
+                                ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
+
+                                using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
+                                {
+                                    imagePart.FeedData(stream);
+                                }
+                                pictureCell.RemoveAllChildren<Paragraph>();
+                                AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
+                            }
+                        }
+                    }
+                }
             }
             
             destination.Position = 0;
@@ -189,18 +232,59 @@ namespace DocxProcessor
             throw new ApplicationException($"Unsupported image type: {ext}");
         }
 
+        public byte[] Replace(byte[] Source, Dictionary<string, string> ReplaceItems)
+        {
+            var stream = new MemoryStream();
+            #region 字典取代部分
+            WmlDocument doc = new WmlDocument("TemplateFile", Source);
+
+            foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
+            {
+
+                string SearchString = keyValuePair.Key;
+                string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題     
+
+                #region 字串替代                    
+                doc = ReplaceStringToString(ref doc, "\n", ReplaceString);
+                doc = ReplaceStringToString(ref doc, SearchString, ReplaceString);
+                #endregion
+            }
+
+            stream.Write(doc.DocumentByteArray, 0, doc.DocumentByteArray.Length);
+            #endregion
+
+            #region 取代後字串格式整理
+            using (var wordDoc = WordprocessingDocument.Open(stream, true))
+            {
+                string docText = wordDoc.MainDocumentPart.GetXDocument().ToString();
+
+                docText = docText.Replace("\n", "").Replace("\r\n", ""); // 去除未替換的換行字串
+
+                docText = docText.Replace("\t", "  "); // 將tab字串 換成真正的tab
+
+                XDocument mainDocumentXDoc = XDocument.Parse(HttpUtility.HtmlDecode(docText.Replace("\n", "").Replace("\r\n", "")));
+
+                mainDocumentXDoc.Save(wordDoc.MainDocumentPart.GetStream(FileMode.Create));
+
+            }
+            #endregion
+
+            stream.Position = 0;
+
+            return stream.ToArray();
+        }
         #region Replace: WordTemplate Replace Function ([Core] Replace To Byte[] By Dictionary)
-    /// <summary>
-    /// 取代WordTemplate的內容字串
-    /// </summary>
-    /// <param name="TemplateFilePath">模板來源路徑</param>
-    /// <param name="ReplaceItems">
-    ///                             用來取代的字典樹{key: string, value: string}
-    ///                            key: SearchString
-    ///                            value: ReplaceString
-    /// </param>                                 
-    /// <returns>byte[]</returns>        
-    public byte[] Replace(string TemplateFilePath, Dictionary<string, string> ReplaceItems)
+        /// <summary>
+        /// 取代WordTemplate的內容字串
+        /// </summary>
+        /// <param name="TemplateFilePath">模板來源路徑</param>
+        /// <param name="ReplaceItems">
+        ///                             用來取代的字典樹{key: string, value: string}
+        ///                            key: SearchString
+        ///                            value: ReplaceString
+        /// </param>                                 
+        /// <returns>byte[]</returns>        
+        public byte[] Replace(string TemplateFilePath, Dictionary<string, string> ReplaceItems)
         {
             if (File.Exists(TemplateFilePath) == true)
             {
