@@ -9,7 +9,7 @@ namespace DocxProcessor
 {
     public class MergeWordTemplate
     {
-       public byte[] MergeDocxsIntoOne(List<Stream> documents)
+        public byte[] MergeDocxsIntoOne(List<Stream> documents)
         {
             var result = new MemoryStream();
 
@@ -25,7 +25,7 @@ namespace DocxProcessor
             var mergedDoc = DocumentBuilder.BuildDocument(sources);
 
             result.Write(mergedDoc.DocumentByteArray, 0, mergedDoc.DocumentByteArray.Length);
-            
+
             result.Position = 0;
 
             return result.ToArray();

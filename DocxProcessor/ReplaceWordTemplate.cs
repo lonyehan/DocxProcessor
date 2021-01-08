@@ -8,6 +8,7 @@ using System;
 using System.Text.RegularExpressions;
 using System.Text;
 using TableCell = DocumentFormat.OpenXml.Wordprocessing.TableCell;
+using TableRow = DocumentFormat.OpenXml.Wordprocessing.TableRow;
 using Table = DocumentFormat.OpenXml.Wordprocessing.Table;
 using DocumentFormat.OpenXml.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
@@ -27,10 +28,35 @@ namespace DocxProcessor
         public decimal HeightInEMU { get; set; }
 
         private decimal CM_TO_EMU = 360000M;
+        private decimal PIXEL_TO_CM = 0.0264583333M;
+
+        public ImageData(string FilePath)
+        {
+            this.FilePath = FilePath;
+            Image img;
+            using (var bmpTemp = new Bitmap(FilePath))
+            {
+                img = new Bitmap(bmpTemp);
+            }            
+            this.WidthInEMU = img.Width * PIXEL_TO_CM * CM_TO_EMU;
+            this.HeightInEMU = img.Height * PIXEL_TO_CM * CM_TO_EMU;            
+        }
+        public ImageData(string FilePath, decimal Width)
+        {
+            this.FilePath = FilePath;
+            Image img;
+            using (var bmpTemp = new Bitmap(FilePath))
+            {
+                img = new Bitmap(bmpTemp);
+            }
+            this.WidthInEMU = Width * CM_TO_EMU;
+            this.HeightInEMU = img.Height * PIXEL_TO_CM * (Width / (img.Width * PIXEL_TO_CM)) * CM_TO_EMU;                       
+        }
+        
         public ImageData(string FilePath, decimal Width = 1.0M, decimal Height = 1.0M){
             this.FilePath = FilePath;
-            this.WidthInEMU = Width * this.CM_TO_EMU;
-            this.HeightInEMU = Height * this.CM_TO_EMU;
+            this.WidthInEMU = Width * CM_TO_EMU;
+            this.HeightInEMU = Height * CM_TO_EMU;
         }
     };
     public class ReplaceWordTemplate
@@ -298,7 +324,7 @@ namespace DocxProcessor
                     
                     string SearchString = keyValuePair.Key;
                     string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題     
-
+                    
                     #region 字串替代                    
                     doc = ReplaceStringToString(ref doc, SearchString, ReplaceString);                    
                     #endregion
@@ -388,9 +414,36 @@ namespace DocxProcessor
             return Replace(TemplateFilePath, ReplaceItems);
         }
         #endregion
-                       
 
+        #region Replace: WordTemplate Replace Function (Replce To TableRow By Dictionary<String, String>)
+        public TableRow Replace(TableRow tableRow, Dictionary<string, string> ReplaceItems)
+        {
+            TableRow targetTableRow = (TableRow)tableRow.Clone();
+
+            foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
+            {
+
+                string SearchString = keyValuePair.Key;
+                string ReplaceString = keyValuePair.Value;  // 解決換行問題     
+
+                #region 字串替代                                    
+                TableCell cell = targetTableRow.Descendants<TableCell>().First(bmp => bmp.InnerText.Contains(SearchString));
+                Paragraph para = targetTableRow.Descendants<Paragraph>().First(bmp => bmp.InnerText.Contains(SearchString));
+                para.InnerText.Replace(SearchString, ReplaceString);
+                //paragraph.InnerText will be empty
+                //newRun.AppendChild(new Text(cell.InnerText.Replace(SearchString, ReplaceString)));
+                //Replace run
+                //cell.ReplaceChild(cell.Descendants<Run>().First(target => target.InnerText.Contains(SearchString)), newRun);                                
+                #endregion
+            }
+
+            return targetTableRow;
         }
+        #endregion
 
-
+        #region Replace: WordTemplate Replace Function (Replace To TableRow By Model)
+        #endregion
     }
+
+
+}
