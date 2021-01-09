@@ -18,7 +18,7 @@ namespace DocxProcessor
             foreach (var stream in documents)
             {
                 var tempms = new MemoryStream();
-                stream.CopyTo(tempms);
+                stream.CopyToAsync(tempms);
                 sources.Add(new Source(new WmlDocument(stream.Length.ToString(), tempms), true));
             }
 

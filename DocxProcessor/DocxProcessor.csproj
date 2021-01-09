@@ -2,14 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <Version>1.0.8</Version>
+    <Version>1.0.10</Version>
     <Authors>LonYeHan</Authors>
     <Company>wkeDocxProcessor</Company>
     <Description>處理Word的函式庫
 * Replace string in docx
 * Replace string with image at TableCell
+* Insert ModelList into Table
 * Merge docxs to one docx
 * upd ImageData Size Auto Fit Width(fix: open image problem)
+* upd Replace Word from Byte[] to Byte[] by Model
   </Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>

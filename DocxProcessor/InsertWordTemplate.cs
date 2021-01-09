@@ -24,20 +24,33 @@ namespace DocxProcessor
 {
     public class InsertWordTemplate
     {
-        public void InsertTableRow(Table table, TableRow tableRow)
-        {                       
-           //add new row to table, after last row in table
-           table.Descendants<TableRow>().Last().InsertBeforeSelf(tableRow);         
+        public void InsertTableRow(TableRow TargetRowPosition, TableRow tableRow)
+        {
+            //add new row to table, after last row in table
+            TargetRowPosition.InsertBeforeSelf(tableRow);
+        }
+        public void InsertTableRow(TableRow TargetRowPosition, TableRow tableRow, int count)
+        {
+            for(int i = 0; i< count; i++)
+            {
+                InsertTableRow(TargetRowPosition, tableRow);
+            }
         }
 
-        public void InsertTableRow(Table table,TableRow tableRow, int count)
+        public void InsertTableRow(Table table, TableRow tableRow, int rowIndex)
+        {                           
+           //add new row to table, after last row in table
+           table.Descendants<TableRow>().ElementAt(rowIndex).InsertAfterSelf(tableRow);         
+        }
+
+        public void InsertTableRow(Table table,TableRow tableRow, int rowIndex, int count)
         {                        
             for (int i = 0; i <= count; i++)
-            {
-                //clone our "reference row"
-                var rowToInsert = (TableRow)tableRow.Clone();                                                
+            {                
+                var rowToInsert = (TableRow)tableRow.Clone();
+
                 //add new row to table, after last row in table
-                table.Descendants<TableRow>().Last().InsertBeforeSelf(rowToInsert);
+                InsertTableRow(table, rowToInsert, rowIndex);
             }
         }
     }

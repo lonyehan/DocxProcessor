@@ -5,8 +5,6 @@ using System.Reflection;
 using DocumentFormat.OpenXml.Packaging;
 using System.Xml.Linq;
 using System;
-using System.Text.RegularExpressions;
-using System.Text;
 using TableCell = DocumentFormat.OpenXml.Wordprocessing.TableCell;
 using TableRow = DocumentFormat.OpenXml.Wordprocessing.TableRow;
 using Table = DocumentFormat.OpenXml.Wordprocessing.Table;
@@ -16,11 +14,12 @@ using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using System.Web;
 using System.Drawing;
-using DocumentFormat.OpenXml;
 using System.Linq;
+using DocumentFormat.OpenXml;
 
 namespace DocxProcessor
 {
+    #region ImageData: Get Image To Replace
     public class ImageData
     {
         public string FilePath { get; set; }
@@ -37,9 +36,9 @@ namespace DocxProcessor
             using (var bmpTemp = new Bitmap(FilePath))
             {
                 img = new Bitmap(bmpTemp);
-            }            
+            }
             this.WidthInEMU = img.Width * PIXEL_TO_CM * CM_TO_EMU;
-            this.HeightInEMU = img.Height * PIXEL_TO_CM * CM_TO_EMU;            
+            this.HeightInEMU = img.Height * PIXEL_TO_CM * CM_TO_EMU;
         }
         public ImageData(string FilePath, decimal Width)
         {
@@ -50,118 +49,22 @@ namespace DocxProcessor
                 img = new Bitmap(bmpTemp);
             }
             this.WidthInEMU = Width * CM_TO_EMU;
-            this.HeightInEMU = img.Height * PIXEL_TO_CM * (Width / (img.Width * PIXEL_TO_CM)) * CM_TO_EMU;                       
+            this.HeightInEMU = img.Height * PIXEL_TO_CM * (Width / (img.Width * PIXEL_TO_CM)) * CM_TO_EMU;
         }
-        
-        public ImageData(string FilePath, decimal Width = 1.0M, decimal Height = 1.0M){
+
+        public ImageData(string FilePath, decimal Width = 1.0M, decimal Height = 1.0M)
+        {
             this.FilePath = FilePath;
             this.WidthInEMU = Width * CM_TO_EMU;
             this.HeightInEMU = Height * CM_TO_EMU;
         }
     };
+    #endregion
     public class ReplaceWordTemplate
     {
-        #region ReplaceStringToString: Replace String At WordTemplate by String
-        /// <summary>
-        /// 用字串取代字串
-        /// </summary>
-        /// <param name="doc">WmlDocument 實質上Word的內容</param>
-        /// <param name="SearchString">查詢用的字串</param>
-        /// <param name="ReplaceString">取代用的字串</param>
-        /// <returns>WmlDocument 取代後的字串</returns>
-        private WmlDocument ReplaceStringToString(ref WmlDocument doc, string SearchString, string ReplaceString)
-        {
-            if (string.IsNullOrEmpty(ReplaceString)) ReplaceString = "\r";            
-            
-            return doc.SearchAndReplace(SearchString, ReplaceString, true);
-        }
-        #endregion        
-        public byte[] ReplaceTableCellByImage(byte[] Source, Dictionary<string, ImageData> ReplaceItems) {
-            MemoryStream originFile = new MemoryStream(Source, true);
-            MemoryStream destination = new MemoryStream();
-
-            originFile.CopyTo(destination);
-            originFile.Close();
-            using (var document = WordprocessingDocument.Open(destination, isEditable: true))
-            {
-                var mainPart = document.MainDocumentPart;
-                foreach (var table in mainPart.Document.Body.Descendants<Table>())
-                {
-                    foreach (var keyValuePair in ReplaceItems)
-                    {
-
-                        string SearchString = keyValuePair.Key;
-
-                        foreach (var pictureCell in table.Descendants<TableCell>())
-                        {
-                            if (pictureCell.InnerText.Contains(SearchString))
-                            {
-                                ImageData ReplacedImage = keyValuePair.Value;
-
-                                ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
-
-                                using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
-                                {
-                                    imagePart.FeedData(stream);
-                                }
-                                pictureCell.RemoveAllChildren<Paragraph>();
-                                AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
-                            }
-                        }
-                    }
-                }
-            }
-
-            destination.Position = 0;
-
-            return destination.ToArray();
-        }
-        public byte[] ReplaceTableCellByImage(string TemplateFilePath, Dictionary<string, ImageData> ReplaceItems)
-        {
-
-            FileStream originFile = new FileStream(TemplateFilePath, FileMode.Open);
-            MemoryStream destination = new MemoryStream();            
-
-            originFile.CopyTo(destination);
-            originFile.Close();
-
-            using (var document = WordprocessingDocument.Open(destination, isEditable: true))
-            {
-                var mainPart = document.MainDocumentPart;
-
-                foreach (var table in mainPart.Document.Body.Descendants<Table>())
-                {
-                    foreach (var keyValuePair in ReplaceItems)
-                    {
-
-                        string SearchString = keyValuePair.Key;
-
-                        foreach (var pictureCell in table.Descendants<TableCell>())
-                        {
-                            if (pictureCell.InnerText.Contains(SearchString))
-                            {
-                                ImageData ReplacedImage = keyValuePair.Value;
-
-                                ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
-
-                                using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
-                                {
-                                    imagePart.FeedData(stream);
-                                }
-                                pictureCell.RemoveAllChildren<Paragraph>();
-                                AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            destination.Position = 0;
-
-            return destination.ToArray();                    
-        }          
+        #region Add: Add Image To Table Cell
         private static void AddImageToCell(TableCell cell, string relationshipId, decimal Cx = 1, decimal Cy = 1)
-        {            
+        {
             var element =
               new Drawing(
                 new DW.Inline(
@@ -224,7 +127,10 @@ namespace DocxProcessor
                 });
 
             cell.Append(new Paragraph(new Run(element)));
-        }        
+        }
+        #endregion
+
+        #region Get: Get Image Type
         /// <summary>
         /// 獲得Input Image的Type
         /// </summary>
@@ -257,7 +163,145 @@ namespace DocxProcessor
 
             throw new ApplicationException($"Unsupported image type: {ext}");
         }
+        #endregion
 
+        #region Converter: Byte[] To MemoryStream
+        private MemoryStream ByteArrayToMemoryStream(byte[] bytes)
+        {
+            MemoryStream origin = new MemoryStream(bytes, true);
+            MemoryStream destination = new MemoryStream();
+
+            origin.CopyToAsync(destination);
+            origin.Close();
+
+            return destination;
+        }
+        #endregion 
+
+        #region Converter: Filepath To Byte[]
+        private byte[] FilePathToByteArray(string FilePath)
+        {
+            // Filepath to Byte Array
+            MemoryStream stream = new MemoryStream();
+
+            using (FileStream fs = new FileStream(FilePath, FileMode.Open))
+            {
+                fs.CopyTo(stream);
+            }
+
+            stream.Seek(0, SeekOrigin.Begin);
+            return stream.ToArray();
+        }
+        #endregion
+
+        #region ReplaceStringToString: Replace String At WordTemplate by String
+        /// <summary>
+        /// 用字串取代字串
+        /// </summary>
+        /// <param name="doc">WmlDocument 實質上Word的內容</param>
+        /// <param name="SearchString">查詢用的字串</param>
+        /// <param name="ReplaceString">取代用的字串</param>
+        /// <returns>WmlDocument 取代後的字串</returns>
+        private WmlDocument ReplaceStringToString(ref WmlDocument doc, string SearchString, string ReplaceString)
+        {
+            if (string.IsNullOrEmpty(ReplaceString)) ReplaceString = "\r";
+
+            return doc.SearchAndReplace(SearchString, ReplaceString, true);
+        }
+        #endregion
+
+        #region Replace: Replace Table Cell By Image (Byte[] to Byte[])
+        public byte[] ReplaceTableCellByImage(byte[] Source, Dictionary<string, ImageData> ReplaceItems)
+        {
+            MemoryStream originFile = new MemoryStream(Source, true);
+            MemoryStream destination = new MemoryStream();
+
+            originFile.CopyTo(destination);
+            originFile.Close();
+            using (var document = WordprocessingDocument.Open(destination, isEditable: true))
+            {
+                var mainPart = document.MainDocumentPart;
+                foreach (var table in mainPart.Document.Body.Descendants<Table>())
+                {
+                    foreach (var keyValuePair in ReplaceItems)
+                    {
+
+                        string SearchString = keyValuePair.Key;
+
+                        foreach (var pictureCell in table.Descendants<TableCell>())
+                        {
+                            if (pictureCell.InnerText.Contains(SearchString))
+                            {
+                                ImageData ReplacedImage = keyValuePair.Value;
+
+                                ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
+
+                                using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
+                                {
+                                    imagePart.FeedData(stream);
+                                }
+                                pictureCell.RemoveAllChildren<Paragraph>();
+                                AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
+                            }
+                        }
+                    }
+                }
+            }
+
+            destination.Position = 0;
+
+            return destination.ToArray();
+        }
+        #endregion
+
+        #region Replace: Replace Table Cell By Image(Filepath to Byte[])
+        public byte[] ReplaceTableCellByImage(string TemplateFilePath, Dictionary<string, ImageData> ReplaceItems)
+        {
+
+            FileStream originFile = new FileStream(TemplateFilePath, FileMode.Open);
+            MemoryStream destination = new MemoryStream();
+
+            originFile.CopyTo(destination);
+            originFile.Close();
+
+            using (var document = WordprocessingDocument.Open(destination, isEditable: true))
+            {
+                var mainPart = document.MainDocumentPart;
+
+                foreach (var table in mainPart.Document.Body.Descendants<Table>())
+                {
+                    foreach (var keyValuePair in ReplaceItems)
+                    {
+
+                        string SearchString = keyValuePair.Key;
+
+                        foreach (var pictureCell in table.Descendants<TableCell>())
+                        {
+                            if (pictureCell.InnerText.Contains(SearchString))
+                            {
+                                ImageData ReplacedImage = keyValuePair.Value;
+
+                                ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
+
+                                using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
+                                {
+                                    imagePart.FeedData(stream);
+                                }
+                                pictureCell.RemoveAllChildren<Paragraph>();
+                                AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
+                            }
+                        }
+                    }
+                }
+            }
+
+            destination.Position = 0;
+
+            return destination.ToArray();
+        }
+        #endregion        
+
+        #region Replace: WordTemplate Replace Function (Replace Byte[] To Byte[] By Dictionary)
         public byte[] Replace(byte[] Source, Dictionary<string, string> ReplaceItems)
         {
             var stream = new MemoryStream();
@@ -299,7 +343,9 @@ namespace DocxProcessor
 
             return stream.ToArray();
         }
-        #region Replace: WordTemplate Replace Function ([Core] Replace To Byte[] By Dictionary)
+        #endregion
+
+        #region Replace: WordTemplate Replace Function ([Core] Replace FilePath To Byte[] By Dictionary)
         /// <summary>
         /// 取代WordTemplate的內容字串
         /// </summary>
@@ -313,20 +359,20 @@ namespace DocxProcessor
         public byte[] Replace(string TemplateFilePath, Dictionary<string, string> ReplaceItems)
         {
             if (File.Exists(TemplateFilePath) == true)
-            {
+            {                
                 var stream = new MemoryStream();
 
                 #region 字典取代部分
                 WmlDocument doc = new WmlDocument(TemplateFilePath);
-                
+
                 foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
                 {
-                    
+
                     string SearchString = keyValuePair.Key;
                     string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題     
-                    
+
                     #region 字串替代                    
-                    doc = ReplaceStringToString(ref doc, SearchString, ReplaceString);                    
+                    doc = ReplaceStringToString(ref doc, SearchString, ReplaceString);
                     #endregion
                 }
 
@@ -337,15 +383,15 @@ namespace DocxProcessor
                 using (var wordDoc = WordprocessingDocument.Open(stream, true))
                 {
                     string docText = wordDoc.MainDocumentPart.GetXDocument().ToString();
-                    
+
                     docText = docText.Replace("\n", "").Replace("\r\n", ""); // 去除未替換的換行字串
 
                     docText = docText.Replace("\t", "  "); // 將tab字串 換成真正的tab
 
-                    XDocument mainDocumentXDoc =  XDocument.Parse(HttpUtility.HtmlDecode(docText.Replace("\n", "").Replace("\r\n", "")));
-                    
-                    mainDocumentXDoc.Save(wordDoc.MainDocumentPart.GetStream(FileMode.Create));                    
-                    
+                    XDocument mainDocumentXDoc = XDocument.Parse(HttpUtility.HtmlDecode(docText.Replace("\n", "").Replace("\r\n", "")));
+
+                    mainDocumentXDoc.Save(wordDoc.MainDocumentPart.GetStream(FileMode.Create));
+
                 }
                 #endregion
 
@@ -356,7 +402,7 @@ namespace DocxProcessor
             else
             {
                 throw new FileNotFoundException("Template File is not exist!");
-            }            
+            }
         }
         #endregion
 
@@ -387,7 +433,7 @@ namespace DocxProcessor
         }
         #endregion
 
-        #region Replace: WordTemplate Replace Function (Replace To Byte[] By Model)
+        #region Replace: WordTemplate Replace Function (Replace FilePath To Byte[] By Model)
         /// <summary>
         /// 取代WordTemplate的內容字串
         /// </summary>
@@ -415,6 +461,34 @@ namespace DocxProcessor
         }
         #endregion
 
+        #region Replace: WordTemplate Replace Function (Replace Byte[] To Byte[] By Model)
+        /// <summary>
+        /// 取代WordTemplate的內容字串
+        /// </summary>
+        /// <param name="TemplateFilePath">模板來源路徑</param>
+        /// <param name="ReplaceModel">
+        ///                             用來取代的Model        
+        /// </param>                                 
+        /// <returns>byte[]</returns>        
+        public byte[] Replace<T>(byte[] bytes, T ReplaceModel) where T : class
+        {
+            PropertyInfo[] infos = ReplaceModel.GetType().GetProperties();
+
+            Dictionary<string, string> ReplaceItems = new Dictionary<string, string>();
+
+            foreach (PropertyInfo info in infos)
+            {
+                string Key = "#" + info.Name + "#";
+
+                string Value = info.GetValue(ReplaceModel, null) == null ? "" : info.GetValue(ReplaceModel, null).ToString();
+
+                ReplaceItems.Add(Key, Value);
+            }
+
+            return Replace(bytes, ReplaceItems);
+        }
+        #endregion
+
         #region Replace: WordTemplate Replace Function (Replce To TableRow By Dictionary<String, String>)
         public TableRow Replace(TableRow tableRow, Dictionary<string, string> ReplaceItems)
         {
@@ -426,14 +500,19 @@ namespace DocxProcessor
                 string SearchString = keyValuePair.Key;
                 string ReplaceString = keyValuePair.Value;  // 解決換行問題     
 
-                #region 字串替代                                    
-                TableCell cell = targetTableRow.Descendants<TableCell>().First(bmp => bmp.InnerText.Contains(SearchString));
-                Paragraph para = targetTableRow.Descendants<Paragraph>().First(bmp => bmp.InnerText.Contains(SearchString));
-                para.InnerText.Replace(SearchString, ReplaceString);
-                //paragraph.InnerText will be empty
-                //newRun.AppendChild(new Text(cell.InnerText.Replace(SearchString, ReplaceString)));
-                //Replace run
-                //cell.ReplaceChild(cell.Descendants<Run>().First(target => target.InnerText.Contains(SearchString)), newRun);                                
+                #region 字串替代                                                    
+                foreach (Paragraph para in targetTableRow.Descendants<Paragraph>())
+                {
+                    if (para.InnerText.Contains(SearchString))
+                    {
+                        Run newRun = (Run)para.Descendants<Run>().First().Clone();
+
+                        newRun.Elements<Text>().First().Text = ReplaceString;
+
+                        para.RemoveAllChildren<Run>();
+                        para.AppendChild<Run>(newRun);
+                    }
+                }
                 #endregion
             }
 
@@ -442,6 +521,68 @@ namespace DocxProcessor
         #endregion
 
         #region Replace: WordTemplate Replace Function (Replace To TableRow By Model)
+        public TableRow Replace<T>(TableRow tableRow, T ReplaceModel) where T : class
+        {
+            PropertyInfo[] infos = ReplaceModel.GetType().GetProperties();
+
+            Dictionary<string, string> ReplaceItems = new Dictionary<string, string>();
+
+            foreach (PropertyInfo info in infos)
+            {
+                string Key = "#" + info.Name + "#";
+
+                string Value = info.GetValue(ReplaceModel, null) == null ? "" : info.GetValue(ReplaceModel, null).ToString();
+
+                ReplaceItems.Add(Key, Value);
+            }
+
+            return Replace(tableRow, ReplaceItems);
+        }
+        #endregion
+
+        #region Replace: WordTemplate Replace Function (Replace From Byte[] To Byte[] By ModelList)
+        public byte[] Replace<T>(byte[] bytes, List<T> ReplaceModelList) where T : class
+        {
+            // 處理Model List 資訊
+            PropertyInfo[] infos = ReplaceModelList.First().GetType().GetProperties();
+
+            List<string> ReplaceTags = new List<string>();
+
+            foreach (PropertyInfo info in infos)
+            {
+                ReplaceTags.Add("#" + info.Name + "#");
+            }
+
+            MemoryStream destination = ByteArrayToMemoryStream(bytes);
+
+            using (var wordDoc = WordprocessingDocument.Open(destination, true))
+            {
+                TableRow TargetRow = wordDoc.MainDocumentPart.Document.Body.Descendants<TableRow>().First((target) => ReplaceTags.All(target.InnerText.Contains));
+                TableRow CopyRow = (TableRow)TargetRow.Clone();
+
+                var Inserter = new InsertWordTemplate();
+                foreach (T ReplaceItem in ReplaceModelList)
+                {
+                    Inserter.InsertTableRow(TargetRow, Replace(CopyRow, ReplaceItem));
+                }
+                TargetRow.Remove();
+
+                wordDoc.Save();
+            }
+
+            destination.Position = 0;
+
+            return destination.ToArray();
+        }
+        #endregion
+
+        #region Replace: WordTemplate Replace Function (Replace From String To Byte[] By ModelList)
+        public byte[] Replace<T>(string TemplateFilePath, List<T> ReplaceModelList) where T : class
+        {
+            byte[] bytes = FilePathToByteArray(TemplateFilePath);
+
+            return Replace(bytes, ReplaceModelList);
+        }
         #endregion
     }
 
