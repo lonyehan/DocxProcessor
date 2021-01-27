@@ -18,10 +18,10 @@ namespace DocxProcessor
             foreach (var stream in documents)
             {
                 var tempms = new MemoryStream();
-                stream.CopyToAsync(tempms);
+                stream.CopyTo(tempms);
                 sources.Add(new Source(new WmlDocument(stream.Length.ToString(), tempms), true));
             }
-
+            
             var mergedDoc = DocumentBuilder.BuildDocument(sources);
 
             result.Write(mergedDoc.DocumentByteArray, 0, mergedDoc.DocumentByteArray.Length);
