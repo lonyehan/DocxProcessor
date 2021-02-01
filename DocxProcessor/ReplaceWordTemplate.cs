@@ -314,8 +314,7 @@ namespace DocxProcessor
                 string SearchString = keyValuePair.Key;
                 string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題     
 
-                #region 字串替代                    
-                doc = ReplaceStringToString(ref doc, "\n", ReplaceString);
+                #region 字串替代                                    
                 doc = ReplaceStringToString(ref doc, SearchString, ReplaceString);
                 #endregion
             }
@@ -504,10 +503,10 @@ namespace DocxProcessor
                 foreach (Paragraph para in targetTableRow.Descendants<Paragraph>())
                 {
                     if (para.InnerText.Contains(SearchString))
-                    {
+                    {                        
                         Run newRun = (Run)para.Descendants<Run>().First().Clone();
 
-                        newRun.Elements<Text>().First().Text = ReplaceString;
+                        newRun.Elements<Text>().First().Text = para.InnerText.Replace(SearchString, ReplaceString);
 
                         para.RemoveAllChildren<Run>();
                         para.AppendChild<Run>(newRun);
