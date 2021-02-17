@@ -164,7 +164,7 @@ namespace DocxProcessor
             throw new ApplicationException($"Unsupported image type: {ext}");
         }
         #endregion
-
+        
         #region Converter: Byte[] To MemoryStream
         private MemoryStream ByteArrayToMemoryStream(byte[] bytes)
         {
@@ -230,7 +230,10 @@ namespace DocxProcessor
 
                         foreach (var pictureCell in table.Descendants<TableCell>())
                         {
-                            if (pictureCell.InnerText.Contains(SearchString))
+                            // 如果裏頭還有Table則取代裡面的
+                            if (pictureCell.Descendants<Table>().Count() > 0) break;
+
+                            if (pictureCell.InnerText == SearchString)
                             {
                                 ImageData ReplacedImage = keyValuePair.Value;
 
@@ -257,86 +260,61 @@ namespace DocxProcessor
         #region Replace: Replace Table Cell By Image(Filepath to Byte[])
         public byte[] ReplaceTableCellByImage(string TemplateFilePath, Dictionary<string, ImageData> ReplaceItems)
         {
-
-            FileStream originFile = new FileStream(TemplateFilePath, FileMode.Open);
-            MemoryStream destination = new MemoryStream();
-
-            originFile.CopyTo(destination);
-            originFile.Close();
-
-            using (var document = WordprocessingDocument.Open(destination, isEditable: true))
+            if (File.Exists(TemplateFilePath) == true)
             {
-                var mainPart = document.MainDocumentPart;
+                byte[] bytes = FilePathToByteArray(TemplateFilePath);
 
-                foreach (var table in mainPart.Document.Body.Descendants<Table>())
-                {
-                    foreach (var keyValuePair in ReplaceItems)
-                    {
-
-                        string SearchString = keyValuePair.Key;
-
-                        foreach (var pictureCell in table.Descendants<TableCell>())
-                        {
-                            if (pictureCell.InnerText.Contains(SearchString))
-                            {
-                                ImageData ReplacedImage = keyValuePair.Value;
-
-                                ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
-
-                                using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
-                                {
-                                    imagePart.FeedData(stream);
-                                }
-                                pictureCell.RemoveAllChildren<Paragraph>();
-                                AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
-                            }
-                        }
-                    }
-                }
+                return ReplaceTableCellByImage(bytes, ReplaceItems);
             }
-
-            destination.Position = 0;
-
-            return destination.ToArray();
+            else
+            {
+                throw new FileNotFoundException("Template File is not exist!");
+            }                        
         }
         #endregion        
 
         #region Replace: WordTemplate Replace Function (Replace Byte[] To Byte[] By Dictionary)
-        public byte[] Replace(byte[] Source, Dictionary<string, string> ReplaceItems)
+        public byte[] Replace(byte[] bytes, Dictionary<string, string> ReplaceItems)
         {
-            var stream = new MemoryStream();
-            #region 字典取代部分
-            WmlDocument doc = new WmlDocument("TemplateFile", Source);
+            // Bytes to Stream
+            MemoryStream stream = ByteArrayToMemoryStream(bytes);
 
+            #region 字典取代部分            
             foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
             {
 
                 string SearchString = keyValuePair.Key;
-                string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題     
+                string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n");                
 
-                #region 字串替代                                    
-                doc = ReplaceStringToString(ref doc, SearchString, ReplaceString);
-                #endregion
-            }
+                #region 取代字串
+                using (var wordDoc = WordprocessingDocument.Open(stream, true))
+                {
+                    var body = wordDoc.MainDocumentPart.Document.Body;                    
 
-            stream.Write(doc.DocumentByteArray, 0, doc.DocumentByteArray.Length);
-            #endregion
+                    foreach(var para in body.Descendants<Paragraph>())
+                    {
+                        if (para.InnerText.Contains(SearchString))
+                        {
+                            Run newRun = (Run)para.Descendants<Run>().First(r => r.InnerText.Contains("#")).Clone();
 
-            #region 取代後字串格式整理
-            using (var wordDoc = WordprocessingDocument.Open(stream, true))
-            {
-                string docText = wordDoc.MainDocumentPart.GetXDocument().ToString();
+                            newRun.Descendants<Text>().First().Text = para.InnerText.Replace(SearchString, ReplaceString);
 
-                docText = docText.Replace("\n", "").Replace("\r\n", ""); // 去除未替換的換行字串
+                            // 處理換行
+                            newRun.InnerXml = newRun.InnerXml.Replace("\r\n", "</w:t><w:br/><w:t>");
+                            
+                            // 處理\t轉成Tab
+                            newRun.InnerXml = newRun.InnerXml.Replace("\t", "   ");
 
-                docText = docText.Replace("\t", "  "); // 將tab字串 換成真正的tab
+                            para.RemoveAllChildren<Run>();
+                            para.AppendChild(newRun);
+                        }
+                    }                                        
 
-                XDocument mainDocumentXDoc = XDocument.Parse(HttpUtility.HtmlDecode(docText.Replace("\n", "").Replace("\r\n", "")));
-
-                mainDocumentXDoc.Save(wordDoc.MainDocumentPart.GetStream(FileMode.Create));
-
-            }
-            #endregion
+                    wordDoc.Save();
+                }
+                #endregion                
+            }            
+            #endregion            
 
             stream.Position = 0;
 
@@ -358,45 +336,10 @@ namespace DocxProcessor
         public byte[] Replace(string TemplateFilePath, Dictionary<string, string> ReplaceItems)
         {
             if (File.Exists(TemplateFilePath) == true)
-            {                
-                var stream = new MemoryStream();
-
-                #region 字典取代部分
-                WmlDocument doc = new WmlDocument(TemplateFilePath);
-
-                foreach (KeyValuePair<string, string> keyValuePair in ReplaceItems)
-                {
-
-                    string SearchString = keyValuePair.Key;
-                    string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n").Replace("\n", "\r\n").Replace("\r\n", "</w:t><w:br/><w:t>");  // 解決換行問題     
-
-                    #region 字串替代                    
-                    doc = ReplaceStringToString(ref doc, SearchString, ReplaceString);
-                    #endregion
-                }
-
-                stream.Write(doc.DocumentByteArray, 0, doc.DocumentByteArray.Length);
-                #endregion
-
-                #region 取代後字串格式整理
-                using (var wordDoc = WordprocessingDocument.Open(stream, true))
-                {
-                    string docText = wordDoc.MainDocumentPart.GetXDocument().ToString();
-
-                    docText = docText.Replace("\n", "").Replace("\r\n", ""); // 去除未替換的換行字串
-
-                    docText = docText.Replace("\t", "  "); // 將tab字串 換成真正的tab
-
-                    XDocument mainDocumentXDoc = XDocument.Parse(HttpUtility.HtmlDecode(docText.Replace("\n", "").Replace("\r\n", "")));
-
-                    mainDocumentXDoc.Save(wordDoc.MainDocumentPart.GetStream(FileMode.Create));
-
-                }
-                #endregion
-
-                stream.Position = 0;
-
-                return stream.ToArray();
+            {
+                byte[] bytes = FilePathToByteArray(TemplateFilePath);      
+                
+                return Replace(bytes, ReplaceItems);
             }
             else
             {
@@ -442,7 +385,7 @@ namespace DocxProcessor
         /// </param>                                 
         /// <returns>byte[]</returns>        
         public byte[] Replace<T>(string TemplateFilePath, T ReplaceModel) where T : class
-        {
+         {
             PropertyInfo[] infos = ReplaceModel.GetType().GetProperties();
 
             Dictionary<string, string> ReplaceItems = new Dictionary<string, string>();
@@ -503,10 +446,10 @@ namespace DocxProcessor
                 foreach (Paragraph para in targetTableRow.Descendants<Paragraph>())
                 {
                     if (para.InnerText.Contains(SearchString))
-                    {                        
-                        Run newRun = (Run)para.Descendants<Run>().First().Clone();
+                    {
+                        Run newRun = (Run)para.Descendants<Run>().First(r => r.InnerText.Contains("#")).Clone();
 
-                        newRun.Elements<Text>().First().Text = para.InnerText.Replace(SearchString, ReplaceString);
+                        newRun.Descendants<Text>().First().Text = para.InnerText.Replace(SearchString, ReplaceString);
 
                         para.RemoveAllChildren<Run>();
                         para.AppendChild<Run>(newRun);

@@ -7,7 +7,8 @@ using System.Reflection;
 namespace DocxProcessor
 {
     public class FormatWordTemplate
-    {
+    {          
+
        
     }
 }

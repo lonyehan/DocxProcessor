@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <Version>1.0.10</Version>
+    <Version>1.0.18</Version>
     <Authors>LonYeHan</Authors>
     <Company>wkeDocxProcessor</Company>
     <Description>處理Word的函式庫
@@ -12,13 +12,19 @@
 * Merge docxs to one docx
 * upd ImageData Size Auto Fit Width(fix: open image problem)
 * upd Replace Word from Byte[] to Byte[] by Model
+* fix Merge Docxs Problem
+* fix Replace Error Problem when '\n' in docx
+* fix Insert Model List into Table Row with more than one parameters
+* Change core method at word replace 
   </Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryUrl>https://github.com/lonyehan/DocxProcessor</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" Version="2.11.3" />
     <PackageReference Include="OpenXmlPowerTools-NetStandard" Version="4.4.21" />
+    <PackageReference Include="puppeteer-report" Version="1.1.2" />
     <PackageReference Include="System.Xml.XmlDocument" Version="4.3.0" />
   </ItemGroup>
 
