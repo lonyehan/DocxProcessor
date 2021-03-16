@@ -37,6 +37,7 @@ namespace DocxProcessor
             {
                 img = new Bitmap(bmpTemp);
             }
+
             this.WidthInEMU = img.Width * PIXEL_TO_CM * CM_TO_EMU;
             this.HeightInEMU = img.Height * PIXEL_TO_CM * CM_TO_EMU;
         }
@@ -48,15 +49,35 @@ namespace DocxProcessor
             {
                 img = new Bitmap(bmpTemp);
             }
+
             this.WidthInEMU = Width * CM_TO_EMU;
             this.HeightInEMU = img.Height * PIXEL_TO_CM * (Width / (img.Width * PIXEL_TO_CM)) * CM_TO_EMU;
         }
-
         public ImageData(string FilePath, decimal Width = 1.0M, decimal Height = 1.0M)
         {
             this.FilePath = FilePath;
-            this.WidthInEMU = Width * CM_TO_EMU;
-            this.HeightInEMU = Height * CM_TO_EMU;
+            Image img;
+            using (var bmpTemp = new Bitmap(FilePath))
+            {
+                img = new Bitmap(bmpTemp);
+            }
+
+            // 先看轉成CM符不符合設定大小
+            decimal WidthInCM = Width;
+            decimal HeightInCM = img.Height * PIXEL_TO_CM * (Width / (img.Width * PIXEL_TO_CM));
+
+            // 高度超過時，則高度也得固定
+            if(HeightInCM > Height)
+            {
+                this.WidthInEMU = WidthInCM * (Height / HeightInCM) * CM_TO_EMU;
+                this.HeightInEMU = Height * CM_TO_EMU;                                
+            }
+            else
+            {
+                this.WidthInEMU = WidthInCM * CM_TO_EMU;
+                this.HeightInEMU = HeightInCM * CM_TO_EMU;
+            }                                     
+            
         }
     };
     #endregion
@@ -126,7 +147,18 @@ namespace DocxProcessor
                     DistanceFromRight = (UInt32Value)0U
                 });
 
-            cell.Append(new Paragraph(new Run(element)));
+            cell.Append(
+                new Paragraph(new Run(element))
+                {
+                    ParagraphProperties = new ParagraphProperties()
+                    {
+                        Justification = new Justification()
+                        {
+                            Val = JustificationValues.Center
+                        }
+                    }
+                }
+            );
         }
         #endregion
 
@@ -227,14 +259,14 @@ namespace DocxProcessor
                     {
 
                         string SearchString = keyValuePair.Key;
-
+                        
                         foreach (var pictureCell in table.Descendants<TableCell>())
-                        {
-                            // 如果裏頭還有Table則取代裡面的
-                            if (pictureCell.Descendants<Table>().Count() > 0) break;
-
-                            if (pictureCell.InnerText == SearchString)
+                        {                            
+                            if (pictureCell.InnerText.Contains(SearchString))
                             {
+                                // 如果裏頭還有Table則取代裡面的
+                                if (pictureCell.Descendants<Table>().Count() > 0) continue;
+
                                 ImageData ReplacedImage = keyValuePair.Value;
 
                                 ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));

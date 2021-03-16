@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <Version>1.0.18</Version>
+    <Version>1.0.23</Version>
     <Authors>LonYeHan</Authors>
     <Company>wkeDocxProcessor</Company>
     <Description>處理Word的函式庫
@@ -16,6 +16,8 @@
 * fix Replace Error Problem when '\n' in docx
 * fix Insert Model List into Table Row with more than one parameters
 * Change core method at word replace 
+* fix Replace Image in Multiple TableCell problem
+* fix Replace Image Resize problem
   </Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/lonyehan/DocxProcessor</RepositoryUrl>
