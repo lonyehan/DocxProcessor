@@ -226,22 +226,6 @@ namespace DocxProcessor
         }
         #endregion
 
-        #region ReplaceStringToString: Replace String At WordTemplate by String
-        /// <summary>
-        /// 用字串取代字串
-        /// </summary>
-        /// <param name="doc">WmlDocument 實質上Word的內容</param>
-        /// <param name="SearchString">查詢用的字串</param>
-        /// <param name="ReplaceString">取代用的字串</param>
-        /// <returns>WmlDocument 取代後的字串</returns>
-        private WmlDocument ReplaceStringToString(ref WmlDocument doc, string SearchString, string ReplaceString)
-        {
-            if (string.IsNullOrEmpty(ReplaceString)) ReplaceString = "\r";
-
-            return doc.SearchAndReplace(SearchString, ReplaceString, true);
-        }
-        #endregion
-
         #region Replace: Replace Table Cell By Image (Byte[] to Byte[])
         public byte[] ReplaceTableCellByImage(byte[] Source, Dictionary<string, ImageData> ReplaceItems)
         {
@@ -516,7 +500,7 @@ namespace DocxProcessor
 
         #region Replace: WordTemplate Replace Function (Replace From Byte[] To Byte[] By ModelList)
         public byte[] Replace<T>(byte[] bytes, List<T> ReplaceModelList) where T : class
-        {
+        {            
             // 處理Model List 資訊
             PropertyInfo[] infos = ReplaceModelList.First().GetType().GetProperties();
 
@@ -531,7 +515,11 @@ namespace DocxProcessor
 
             using (var wordDoc = WordprocessingDocument.Open(destination, true))
             {
-                TableRow TargetRow = wordDoc.MainDocumentPart.Document.Body.Descendants<TableRow>().First((target) => ReplaceTags.All(target.InnerText.Contains));
+                TableRow TargetRow = wordDoc.MainDocumentPart.Document.Body.Descendants<TableRow>().FirstOrDefault((target) => ReplaceTags.All(target.InnerText.Contains));
+                
+                // 如果沒找到則回傳原先資料
+                if (TargetRow == null) return bytes;
+
                 TableRow CopyRow = (TableRow)TargetRow.Clone();
 
                 var Inserter = new InsertWordTemplate();
@@ -546,7 +534,7 @@ namespace DocxProcessor
 
             destination.Position = 0;
 
-            return destination.ToArray();
+            return destination.ToArray();            
         }
         #endregion
 

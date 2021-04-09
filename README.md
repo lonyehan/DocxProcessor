@@ -19,7 +19,7 @@
     string TemplatePath = "<TargetFile>.docx";  
             
     // prepare replace items 
-    Dictiondary<string, string> items = new Dictiondary<string, string>();    
+    Dictionary<string, string> items = new Dictionary<string, string>();    
     
     items.Add("#SearchingString#", "ReplaceString")    
     ...
