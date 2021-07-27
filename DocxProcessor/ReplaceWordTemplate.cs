@@ -12,77 +12,99 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using System.Web;
 using System.Drawing;
 using System.Linq;
 using DocumentFormat.OpenXml;
+using System.Drawing.Imaging;
+using static DocxProcessor.Tools.Converter;
 
 namespace DocxProcessor
 {
     #region ImageData: Get Image To Replace
     public class ImageData
     {
-        public string FilePath { get; set; }
+        public byte[] ImageBytes { get; set; }
+        public ImagePartType FileType { get; set; }
         public decimal WidthInEMU { get; set; }
         public decimal HeightInEMU { get; set; }
+        public decimal OriginWidth { get; set; }
+        public decimal OriginHeight { get; set; }
 
         private decimal CM_TO_EMU = 360000M;
         private decimal PIXEL_TO_CM = 0.0264583333M;
 
-        public ImageData(string FilePath)
+        // [Core] Bytes Array
+        #region [Core] Bytes Array
+        public ImageData(byte[] bytes)
         {
-            this.FilePath = FilePath;
             Image img;
-            using (var bmpTemp = new Bitmap(FilePath))
-            {
-                img = new Bitmap(bmpTemp);
-            }
+            ImageBytes = bytes;
 
-            this.WidthInEMU = img.Width * PIXEL_TO_CM * CM_TO_EMU;
-            this.HeightInEMU = img.Height * PIXEL_TO_CM * CM_TO_EMU;
+            // bytes to Memory
+            MemoryStream stream = new MemoryStream(ImageBytes);
+
+            using (Bitmap bitmap = new Bitmap(stream))
+            {
+                img = new Bitmap(bitmap);
+
+                // 獲取圖檔類型
+                FileType = GetImageType(bitmap);
+            }
+            // 圖片原大小 單位為pixel
+            this.OriginWidth = img.Width;
+            this.OriginHeight = img.Height;
+
+            // 設定到Docx的大小
+            this.WidthInEMU = OriginWidth * PIXEL_TO_CM * CM_TO_EMU;
+            this.HeightInEMU = OriginHeight * PIXEL_TO_CM * CM_TO_EMU;
         }
-        public ImageData(string FilePath, decimal Width)
-        {
-            this.FilePath = FilePath;
-            Image img;
-            using (var bmpTemp = new Bitmap(FilePath))
-            {
-                img = new Bitmap(bmpTemp);
-            }
 
+        public ImageData(byte[] bytes, decimal Width) : this(bytes)
+        {
             this.WidthInEMU = Width * CM_TO_EMU;
-            this.HeightInEMU = img.Height * PIXEL_TO_CM * (Width / (img.Width * PIXEL_TO_CM)) * CM_TO_EMU;
+            this.HeightInEMU = this.OriginHeight * PIXEL_TO_CM * (Width / (this.OriginWidth * PIXEL_TO_CM)) * CM_TO_EMU;
         }
-        public ImageData(string FilePath, decimal Width = 1.0M, decimal Height = 1.0M)
-        {
-            this.FilePath = FilePath;
-            Image img;
-            using (var bmpTemp = new Bitmap(FilePath))
-            {
-                img = new Bitmap(bmpTemp);
-            }
 
+        public ImageData(byte[] bytes, decimal Width = 1.0M, decimal Height = 1.0M) : this(bytes)
+        {
             // 先看轉成CM符不符合設定大小
             decimal WidthInCM = Width;
-            decimal HeightInCM = img.Height * PIXEL_TO_CM * (Width / (img.Width * PIXEL_TO_CM));
+            decimal HeightInCM = this.OriginHeight * PIXEL_TO_CM * (Width / (this.OriginWidth * PIXEL_TO_CM));
 
             // 高度超過時，則高度也得固定
-            if(HeightInCM > Height)
+            if (HeightInCM > Height)
             {
                 this.WidthInEMU = WidthInCM * (Height / HeightInCM) * CM_TO_EMU;
-                this.HeightInEMU = Height * CM_TO_EMU;                                
+                this.HeightInEMU = Height * CM_TO_EMU;
             }
             else
             {
                 this.WidthInEMU = WidthInCM * CM_TO_EMU;
                 this.HeightInEMU = HeightInCM * CM_TO_EMU;
-            }                                     
-            
+            }
         }
+        #endregion
+
+        #region MemoryStream
+        public ImageData(MemoryStream stream) : this(stream.ToArray()) { }
+
+        public ImageData(MemoryStream stream, decimal Width) : this(stream.ToArray(), Width) { }
+
+        public ImageData(MemoryStream stream, decimal Width, decimal Height) : this(stream.ToArray(), Width, Height) { }
+        #endregion
+
+        #region FilePath
+        public ImageData(string FilePath) : this(FilePathToByteArray(FilePath)) { }
+
+        public ImageData(string FilePath, decimal Width) : this(FilePathToByteArray(FilePath), Width) { }
+
+        public ImageData(string FilePath, decimal Width = 1.0M, decimal Height = 1.0M) : this(FilePathToByteArray(FilePath), Width, Height) { }
+        #endregion
     };
     #endregion
+
     public class ReplaceWordTemplate
-    {
+    {        
         #region Add: Add Image To Table Cell
         private static void AddImageToCell(TableCell cell, string relationshipId, decimal Cx = 1, decimal Cy = 1)
         {
@@ -161,71 +183,7 @@ namespace DocxProcessor
             );
         }
         #endregion
-
-        #region Get: Get Image Type
-        /// <summary>
-        /// 獲得Input Image的Type
-        /// </summary>
-        /// <param name="TargetPath"></param>
-        /// <returns></returns>
-        private ImagePartType GetImageType(string TargetPath)
-        {
-            var ext = Path.GetExtension(TargetPath).TrimStart('.').ToLower();
-            switch (ext)
-
-            {
-
-                case "jpg":
-
-                    return ImagePartType.Jpeg;
-
-                case "png":
-
-                    return ImagePartType.Png;
-
-                case "gif":
-
-                    return ImagePartType.Gif;
-
-                case "bmp":
-
-                    return ImagePartType.Bmp;
-
-            }
-
-            throw new ApplicationException($"Unsupported image type: {ext}");
-        }
-        #endregion
-        
-        #region Converter: Byte[] To MemoryStream
-        private MemoryStream ByteArrayToMemoryStream(byte[] bytes)
-        {
-            MemoryStream origin = new MemoryStream(bytes, true);
-            MemoryStream destination = new MemoryStream();
-
-            origin.CopyToAsync(destination);
-            origin.Close();
-
-            return destination;
-        }
-        #endregion 
-
-        #region Converter: Filepath To Byte[]
-        private byte[] FilePathToByteArray(string FilePath)
-        {
-            // Filepath to Byte Array
-            MemoryStream stream = new MemoryStream();
-
-            using (FileStream fs = new FileStream(FilePath, FileMode.Open))
-            {
-                fs.CopyTo(stream);
-            }
-
-            stream.Seek(0, SeekOrigin.Begin);
-            return stream.ToArray();
-        }
-        #endregion
-
+                        
         #region Replace: Replace Table Cell By Image (Byte[] to Byte[])
         public byte[] ReplaceTableCellByImage(byte[] Source, Dictionary<string, ImageData> ReplaceItems)
         {
@@ -253,12 +211,12 @@ namespace DocxProcessor
 
                                 ImageData ReplacedImage = keyValuePair.Value;
 
-                                ImagePart imagePart = mainPart.AddImagePart(GetImageType(ReplacedImage.FilePath));
+                                ImagePart imagePart = mainPart.AddImagePart(ReplacedImage.FileType);
 
-                                using (FileStream stream = new FileStream(ReplacedImage.FilePath, FileMode.Open))
-                                {
-                                    imagePart.FeedData(stream);
-                                }
+                                MemoryStream ReplaceStream = new MemoryStream(ReplacedImage.ImageBytes);                                
+
+                                imagePart.FeedData(ReplaceStream);
+
                                 pictureCell.RemoveAllChildren<Paragraph>();
                                 AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
                             }
