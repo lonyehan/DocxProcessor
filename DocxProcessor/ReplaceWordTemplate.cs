@@ -33,7 +33,6 @@ namespace DocxProcessor
         private decimal CM_TO_EMU = 360000M;
         private decimal PIXEL_TO_CM = 0.0264583333M;
 
-        // [Core] Bytes Array
         #region [Core] Bytes Array
         public ImageData(byte[] bytes)
         {
@@ -414,7 +413,7 @@ namespace DocxProcessor
             {
 
                 string SearchString = keyValuePair.Key;
-                string ReplaceString = keyValuePair.Value;  // 解決換行問題     
+                string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n");  // 解決換行問題     
 
                 #region 字串替代                                                    
                 foreach (Paragraph para in targetTableRow.Descendants<Paragraph>())
@@ -424,6 +423,12 @@ namespace DocxProcessor
                         Run newRun = (Run)para.Descendants<Run>().First(r => r.InnerText.Contains("#")).Clone();
 
                         newRun.Descendants<Text>().First().Text = para.InnerText.Replace(SearchString, ReplaceString);
+
+                        // 處理換行
+                        newRun.InnerXml = newRun.InnerXml.Replace("\r\n", "</w:t><w:br/><w:t>");
+
+                        // 處理\t轉成Tab
+                        newRun.InnerXml = newRun.InnerXml.Replace("\t", "   ");
 
                         para.RemoveAllChildren<Run>();
                         para.AppendChild<Run>(newRun);
