@@ -103,7 +103,7 @@ namespace DocxProcessor
     #endregion
 
     public class ReplaceWordTemplate
-    {        
+    {
         #region Add: Add Image To Table Cell
         private static void AddImageToCell(TableCell cell, string relationshipId, decimal Cx = 1, decimal Cy = 1)
         {
@@ -182,7 +182,7 @@ namespace DocxProcessor
             );
         }
         #endregion
-                        
+
         #region Replace: Replace Table Cell By Image (Byte[] to Byte[])
         public byte[] ReplaceTableCellByImage(byte[] Source, Dictionary<string, ImageData> ReplaceItems)
         {
@@ -200,9 +200,9 @@ namespace DocxProcessor
                     {
 
                         string SearchString = keyValuePair.Key;
-                        
+
                         foreach (var pictureCell in table.Descendants<TableCell>())
-                        {                            
+                        {
                             if (pictureCell.InnerText.Contains(SearchString))
                             {
                                 // 如果裏頭還有Table則取代裡面的
@@ -212,7 +212,7 @@ namespace DocxProcessor
 
                                 ImagePart imagePart = mainPart.AddImagePart(ReplacedImage.FileType);
 
-                                MemoryStream ReplaceStream = new MemoryStream(ReplacedImage.ImageBytes);                                
+                                MemoryStream ReplaceStream = new MemoryStream(ReplacedImage.ImageBytes);
 
                                 imagePart.FeedData(ReplaceStream);
 
@@ -242,9 +242,41 @@ namespace DocxProcessor
             else
             {
                 throw new FileNotFoundException("Template File is not exist!");
-            }                        
+            }
         }
         #endregion        
+
+        #region Replace: Replace Table Row By Image (TableRow to TableRow)
+        public TableRow Replace(MainDocumentPart mainPart, TableRow tableRow, Dictionary<string, ImageData> ReplaceItems)
+        {
+            foreach (var keyValuePair in ReplaceItems)
+            {
+                string SearchString = keyValuePair.Key;
+
+                foreach (var pictureCell in tableRow.Descendants<TableCell>())
+                {
+                    if (pictureCell.InnerText.Contains(SearchString))
+                    {
+                        // 如果裏頭還有Table則取代裡面的
+                        if (pictureCell.Descendants<Table>().Count() > 0) continue;
+
+                        ImageData ReplacedImage = keyValuePair.Value;
+
+                        ImagePart imagePart = mainPart.AddImagePart(ReplacedImage.FileType);
+
+                        MemoryStream ReplaceStream = new MemoryStream(ReplacedImage.ImageBytes);
+
+                        imagePart.FeedData(ReplaceStream);
+
+                        pictureCell.RemoveAllChildren<Paragraph>();
+                        AddImageToCell(pictureCell, mainPart.GetIdOfPart(imagePart), ReplacedImage.WidthInEMU, ReplacedImage.HeightInEMU);
+                    }
+                }
+            }
+
+            return tableRow;
+        }
+        #endregion
 
         #region Replace: WordTemplate Replace Function (Replace Byte[] To Byte[] By Dictionary)
         public byte[] Replace(byte[] bytes, Dictionary<string, string> ReplaceItems)
@@ -257,14 +289,14 @@ namespace DocxProcessor
             {
 
                 string SearchString = keyValuePair.Key;
-                string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n");                
+                string ReplaceString = keyValuePair.Value.Replace("\r\n", "\n");
 
                 #region 取代字串
                 using (var wordDoc = WordprocessingDocument.Open(stream, true))
                 {
-                    var body = wordDoc.MainDocumentPart.Document.Body;                    
+                    var body = wordDoc.MainDocumentPart.Document.Body;
 
-                    foreach(var para in body.Descendants<Paragraph>())
+                    foreach (var para in body.Descendants<Paragraph>())
                     {
                         if (para.InnerText.Contains(SearchString))
                         {
@@ -274,20 +306,20 @@ namespace DocxProcessor
 
                             // 處理換行
                             newRun.InnerXml = newRun.InnerXml.Replace("\r\n", "</w:t><w:br/><w:t>");
-                            
+
                             // 處理\t轉成Tab
                             newRun.InnerXml = newRun.InnerXml.Replace("\t", "   ");
 
                             para.RemoveAllChildren<Run>();
                             para.AppendChild(newRun);
                         }
-                    }                                        
+                    }
 
                     wordDoc.Save();
                 }
                 #endregion                
-            }            
-            #endregion            
+            }
+            #endregion
 
             stream.Position = 0;
 
@@ -310,8 +342,8 @@ namespace DocxProcessor
         {
             if (File.Exists(TemplateFilePath) == true)
             {
-                byte[] bytes = FilePathToByteArray(TemplateFilePath);      
-                
+                byte[] bytes = FilePathToByteArray(TemplateFilePath);
+
                 return Replace(bytes, ReplaceItems);
             }
             else
@@ -358,7 +390,7 @@ namespace DocxProcessor
         /// </param>                                 
         /// <returns>byte[]</returns>        
         public byte[] Replace<T>(string TemplateFilePath, T ReplaceModel) where T : class
-         {
+        {
             PropertyInfo[] infos = ReplaceModel.GetType().GetProperties();
 
             Dictionary<string, string> ReplaceItems = new Dictionary<string, string>();
@@ -463,7 +495,7 @@ namespace DocxProcessor
 
         #region Replace: WordTemplate Replace Function (Replace From Byte[] To Byte[] By ModelList)
         public byte[] Replace<T>(byte[] bytes, List<T> ReplaceModelList) where T : class
-        {            
+        {
             // 處理Model List 資訊
             PropertyInfo[] infos = ReplaceModelList.First().GetType().GetProperties();
 
@@ -479,16 +511,31 @@ namespace DocxProcessor
             using (var wordDoc = WordprocessingDocument.Open(destination, true))
             {
                 TableRow TargetRow = wordDoc.MainDocumentPart.Document.Body.Descendants<TableRow>().FirstOrDefault((target) => ReplaceTags.All(target.InnerText.Contains));
-                
+
                 // 如果沒找到則回傳原先資料
                 if (TargetRow == null) return bytes;
-
-                TableRow CopyRow = (TableRow)TargetRow.Clone();
 
                 var Inserter = new InsertWordTemplate();
                 foreach (T ReplaceItem in ReplaceModelList)
                 {
-                    Inserter.InsertTableRow(TargetRow, Replace(CopyRow, ReplaceItem));
+                    Dictionary<string, ImageData> ImageReplceAttribute = new Dictionary<string, ImageData>();
+                    Dictionary<string, string> TextReplceAttribute = new Dictionary<string, string>();
+
+                    // 先處理圖片替代問題
+                    ImageReplceAttribute = ReplaceItem.GetType()
+                                                      .GetProperties()
+                                                      .Where(d => d.PropertyType == typeof(ImageData))
+                                                      .ToDictionary(x => x.Name, x => x.GetValue(ReplaceItem) as ImageData);
+                    // 純文字部分替代問題
+                    TextReplceAttribute = ReplaceItem.GetType()
+                                                     .GetProperties()
+                                                     .Where(d => d.PropertyType != typeof(ImageData))
+                                                     .ToDictionary(x => "#" + x.Name + "#", x => x.GetValue(ReplaceItem) == null ? "" : x.GetValue(ReplaceItem).ToString());
+
+                    // 替代圖片後替代文字
+                    TableRow ResulRow = Replace(Replace(wordDoc.MainDocumentPart, (TableRow)TargetRow.Clone(), ImageReplceAttribute), TextReplceAttribute);
+
+                    Inserter.InsertTableRow(TargetRow, ResulRow);
                 }
                 TargetRow.Remove();
 
@@ -497,7 +544,7 @@ namespace DocxProcessor
 
             destination.Position = 0;
 
-            return destination.ToArray();            
+            return destination.ToArray();
         }
         #endregion
 

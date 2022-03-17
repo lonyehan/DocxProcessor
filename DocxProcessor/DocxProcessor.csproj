@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <Version>1.0.26</Version>
+    <Version>1.0.27</Version>
     <Authors>LonYeHan</Authors>
     <Company>wkeDocxProcessor</Company>
     <Description>
@@ -23,6 +23,7 @@
       * upd Replace ImageData by Byte[]
       * upd Replace ImageData by MemoryStream
       * fix Replace string new line problem by ModelList
+      * upd Replace ModelList with Image
     </Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/lonyehan/DocxProcessor</RepositoryUrl>
