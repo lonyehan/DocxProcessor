@@ -5,7 +5,6 @@ using System.IO;
 using System.Reflection;
 using OpenXmlPowerTools;
 using System.Xml.Linq;
-using PuppeteerReportCsharp;
 
 namespace DocxProcessor
 {
@@ -74,24 +73,7 @@ namespace DocxProcessor
                     return result.ToArray();
                 }
             }
-        }
-        public async System.Threading.Tasks.Task<byte[]> HtmlToPdf(string Filepath)
-        {
-            var puppeteer = new PuppeteerReport();           
-            return await puppeteer.PDF(Filepath,
-                new PuppeteerSharp.PdfOptions
-                {
-                    Format = PuppeteerSharp.Media.PaperFormat.A4,
-                    PreferCSSPageSize = true,
-                    MarginOptions = new PuppeteerSharp.Media.MarginOptions
-                    {
-                        Top = "10mm",
-                        Left = "10mm",
-                        Right = "10mm",
-                        Bottom = "10mm"
-                    }
-                }) ;
-        }
+        }        
         /*
            public File ConvertWordToPDF(string FilePath)
             {
